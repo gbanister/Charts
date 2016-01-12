@@ -36,7 +36,7 @@
 		    function drawCharts() {
 
 		        var getStackChartDataUrl = "@(Html.BuildUrlFromExpression<HomeController>(x => x.GetChartData()))";
-		        var getPieChartDataUrl = "@(Html.BuildUrlFromExpression<HomeController>(x => x.GetPieChartData()))";
+		        var getPieChartDataUrl = "@(Html.BuildUrlFromExpression<HomeController>(x => x.GetPieChartData(null)))";
 
 		        $.getJSON(getStackChartDataUrl, function (datastring) {
 		            var data = JSON.parse(datastring);
@@ -64,7 +64,7 @@
 		                    var options = {
 		                        width: 1000,
 		                        height: 550,
-		                        title: 'JP Morgan Deals by Industry'
+		                        title: 'Deals by Industry for ' + advisors
 		                    };
 		                    var chart = new google.visualization.PieChart(document.getElementById('pie_chart_div'));
 		                    chart.draw(data, options);

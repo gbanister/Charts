@@ -1,9 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Data;
 using System.IO;
 using System.Linq;
-using System.Web;
 using System.Web.Mvc;
 using Charts.Models;
 using Excel;
@@ -15,12 +13,42 @@ namespace Charts.Controllers
     {
         public ActionResult Index()
         {
-
-           
-
-
             return View();
         }
+
+
+        [HttpGet]
+        public JsonResult GetPieChartData(string advisors)
+        {
+            var filePath = HttpContext.Server.MapPath("~/App_Data/Announced Deals w # 2011 v02.xls");
+
+            string[] advisorArray;
+            try
+            {
+                advisorArray = advisors.Split(',');
+            }
+            catch (Exception)
+            {
+                return Json(new {Error ="bad input" }, JsonRequestBehavior.AllowGet);
+            }
+
+            var advisorDeals  = GetIndustryByAdvisor(filePath, advisorArray);
+  
+            object[,] table = new object[advisorDeals.Count+1, 2];
+            table[0, 0] = "Industry";
+            table[0, 1] = "Deals";
+
+            for (int i = 0; i < advisorDeals.Count; i++)
+            {
+                table[i+1, 0] = advisorDeals[i].Industry;
+                table[i+1, 1] = advisorDeals[i].Deals;
+            }
+
+            var json = JsonConvert.SerializeObject(table, Formatting.None);
+
+            return Json(json, JsonRequestBehavior.AllowGet);
+        }
+
 
 
         [HttpGet]
@@ -29,9 +57,9 @@ namespace Charts.Controllers
             var filePath = HttpContext.Server.MapPath("~/App_Data/Announced Deals w # 2010 v02.xls");
             // var filePath = @"\App_Data\Announced Deals w # 2010 v02.xls";
 
-            var sums1 = GetResult(filePath);
+            var sums1 = GetRegionDeals(filePath);
             filePath = HttpContext.Server.MapPath("~/App_Data/Announced Deals w # 2011 v02.xls");
-            var sums2 = GetResult(filePath);
+            var sums2 = GetRegionDeals(filePath);
 
             object[,] table = new object[3, 5];
             table[0, 0] = "API Category";
@@ -54,8 +82,56 @@ namespace Charts.Controllers
 
             return Json(json, JsonRequestBehavior.AllowGet);
         }
-        
-        private static List<Deal> GetResult(string filePath)
+
+        private static List<AdvisorDeal> GetIndustryByAdvisor(string filePath, params string[] advisorVariations)
+        {
+            FileStream stream = System.IO.File.Open(filePath, FileMode.Open, FileAccess.Read);
+            IExcelDataReader excelReader = ExcelReaderFactory.CreateBinaryReader(stream);
+            excelReader.IsFirstRowAsColumnNames = true;
+
+            //5. Data Reader methods
+            var deals = new Dictionary<string, int>();
+           
+            var isFirstRow = true;
+            while (excelReader.Read())
+            {
+                if (isFirstRow)
+                {
+                    isFirstRow = false;
+                    continue;
+                }
+                var acquirorAdvisor = excelReader.GetString(3) ?? "";
+                var targetAdvisor = excelReader.GetString(4) ?? "";
+                foreach (var advisor in advisorVariations)
+                {
+                    if (acquirorAdvisor.Contains(advisor) || targetAdvisor.Contains(advisor))
+                    {
+                        var industry = excelReader.GetString(8);
+                        if (deals.ContainsKey(industry))
+                        {
+                            deals[industry] ++;
+                        }
+                        else
+                        {
+                            deals.Add(industry, 1);
+                        }
+                    }
+                }
+
+            }
+
+            excelReader.Close();
+            excelReader.Dispose();
+
+            var advisorDeals = deals.Select(x => new AdvisorDeal { Deals = x.Value, Industry = x.Key })
+                .OrderBy(x => x.Industry)
+                .ToList();
+
+            return advisorDeals;
+        }
+
+
+        private static List<RegionDeal> GetRegionDeals(string filePath)
         {
             FileStream stream = System.IO.File.Open(filePath, FileMode.Open, FileAccess.Read);
 
@@ -73,7 +149,7 @@ namespace Charts.Controllers
             //           var dataSet = excelReader.AsDataSet();
 
             //5. Data Reader methods
-            var deals = new List<Deal>();
+            var deals = new List<RegionDeal>();
             var isFirstRow = true;
             while (excelReader.Read())
             {
@@ -84,22 +160,23 @@ namespace Charts.Controllers
                 }
                 var value = excelReader.GetDecimal(7);
                 if (value < 0) value = 0; 
-                deals.Add(new Deal { Region = excelReader.GetString(6), Value = value });
+                deals.Add(new RegionDeal { Region = excelReader.GetString(6), Value = value });
             }
 
             //6. Free resources (IExcelDataReader is IDisposable)
             excelReader.Close();
+            excelReader.Dispose();
 
 
-//            var deals = new List<Deal>();
-//            foreach (DataRow row in dataSet.Tables[0].Rows)
-//            {
-//                var value = row[7] is DBNull ? 0 : Convert.ToDecimal(row[7]);
-//                deals.Add(new Deal {Region = row[6].ToString(), Value = value});
-//            }
+            //            var deals = new List<RegionDeal>();
+            //            foreach (DataRow row in dataSet.Tables[0].Rows)
+            //            {
+            //                var value = row[7] is DBNull ? 0 : Convert.ToDecimal(row[7]);
+            //                deals.Add(new RegionDeal {Region = row[6].ToString(), Value = value});
+            //            }
 
             var sums = deals.GroupBy(d => d.Region)
-                .Select(x => new Deal { Value = x.Sum(d => d.Value), Region = x.First().Region})
+                .Select(x => new RegionDeal { Value = x.Sum(d => d.Value), Region = x.First().Region})
                 .OrderBy(x => x.Region)
                 .ToList();
 

@@ -1,16 +1,17 @@
 ﻿
 namespace Charts.Models
 {
-    public class Deal
+    public class RegionDeal
     {
         public string Region { get; set; }
         public decimal Value { get; set; }
     }
 
-    public class ChartData
+    public class AdvisorDeal
     {
-        public string[] Lables; 
-        public string[][] Table { get; set; }
-
+        public string Industry; 
+        public int Deals;
     }
+
+ 
 }

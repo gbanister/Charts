@@ -1,14 +1,26 @@
-﻿@{
+﻿@using Charts.Controllers
+@using Microsoft.Web.Mvc;
+
+@{
     ViewBag.Title = "Home Page";
 }
 
 <div class="row">
-    <div class="col-md-4">
+    <div class="">
         <h2>Stacked Bar Chart</h2>
         <p>
             This is using Google Charts API
         </p>
-        <div id="chart_div">></div>
+        <div id="chart_div"></div>
+    </div>
+    <div class="">
+        <h2>Pie Chart</h2>
+        <div>
+            <label for="advisor">Comma delimited Advisor prefixs:</label><br/>
+            <input type="text" id="advisor" value="JPMorgan, JP Morgan">
+            <button id="advisors-button">Go</button>
+        </div>
+        <div id="pie_chart_div"></div>
     </div>
 </div>
 
@@ -20,36 +32,46 @@
     <script type="text/javascript">
 		$(document).ready(function ()
 		{
-		    google.setOnLoadCallback(drawChart);
-		    function drawChart() {
+		    google.setOnLoadCallback(drawCharts);
+		    function drawCharts() {
 
-		        $.getJSON("home/GetChartData", function (datastring) {
+		        var getStackChartDataUrl = "@(Html.BuildUrlFromExpression<HomeController>(x => x.GetChartData()))";
+		        var getPieChartDataUrl = "@(Html.BuildUrlFromExpression<HomeController>(x => x.GetPieChartData()))";
 
+		        $.getJSON(getStackChartDataUrl, function (datastring) {
 		            var data = JSON.parse(datastring);
-
 		            data = google.visualization.arrayToDataTable(data);
-
 		            var options = {
 		                width: 1000,
 		                height: 550,
 		                legend: { position: 'top', maxLines: 3, textStyle: { color: 'black', fontSize: 16 } },
 		                isStacked: true,
-
 		                // Displays tooltip on selection.
-		                // tooltip: { trigger: 'selection' }, 
+		                // tooltip: { trigger: 'selection' },
 		            };
-
 		            var chart = new google.visualization.ColumnChart(document.getElementById('chart_div'));
 		            chart.draw(data, options);
-
 		            // Selects a set point on chart.
-		            // chart.setSelection([{row:0,column:1}]) 
-
-		            // Renders chart as PNG image 
+		            // chart.setSelection([{row:0,column:1}])
+		            // Renders chart as PNG image
 		            // chart_div.innerHTML = '<img src="' + chart.getImageURI() + '">';
+		        }).then(function () {
+		            $("#advisors-button").click(function() {
+		                var advisors = $("#advisor").val();
+		                $.getJSON(getPieChartDataUrl, { advisors: advisors }, function (datastring) {
+		                    var data = JSON.parse(datastring);
+		                    data = google.visualization.arrayToDataTable(data);
+		                    var options = {
+		                        width: 1000,
+		                        height: 550,
+		                        title: 'JP Morgan Deals by Industry'
+		                    };
+		                    var chart = new google.visualization.PieChart(document.getElementById('pie_chart_div'));
+		                    chart.draw(data, options);
+		                });
+		            });
+
 		        });
-
-
 		    }
 		});
     </script>

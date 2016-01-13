@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Web.Helpers;
 using System.Web.Mvc;
 using Charts.Models;
 using Excel;
@@ -16,6 +17,115 @@ namespace Charts.Controllers
             return View();
         }
 
+
+        [HttpGet]
+        public JsonResult GetLineChartData()
+        {
+            var filePath2010 = HttpContext.Server.MapPath("~/App_Data/Announced Deals w # 2010 v02.xls");
+            var filePath2011 = HttpContext.Server.MapPath("~/App_Data/Announced Deals w # 2011 v02.xls");
+            var table = InitTable();
+            GetQarterlyDeals(filePath2010, table);
+            GetQarterlyDeals(filePath2011, table);
+            CalculateMeans(table);
+            var json = JsonConvert.SerializeObject(table, Formatting.None);
+            return Json(json, JsonRequestBehavior.AllowGet);
+        }
+
+        private void CalculateMeans(object[,] table)
+        {
+            for (var row = 1; row < 9; row++)
+                for (var col = 1; col < 5; col++)
+                {
+                    var items = (List<int>) table[row, col];
+                    if (items.Count == 0)
+                    {
+                        table[row, col] = 0;
+                    }
+                    else
+                    {
+                        table[row, col] = items.Average();
+                    }
+                }
+        }
+
+        private void GetQarterlyDeals(string filePath, object[,] table)
+        {
+            FileStream stream = System.IO.File.Open(filePath, FileMode.Open, FileAccess.Read);
+            IExcelDataReader excelReader = ExcelReaderFactory.CreateBinaryReader(stream);
+            excelReader.IsFirstRowAsColumnNames = true;
+
+
+            var isFirstRow = true;
+            while (excelReader.Read())
+            {
+                if (isFirstRow)
+                {
+                    isFirstRow = false;
+                    continue;
+                }
+
+                var value = excelReader.GetDecimal(7);
+                if (value < 100) continue;
+
+                var numAdvisors = excelReader.GetInt32(12);
+                if (numAdvisors < 1) continue;
+                
+                var date = excelReader.GetDateTime(0);
+                var quarter = GetQuarter(date);
+                var tableRow = (date.Year - 2009)*quarter;
+                var tableCol = GetValueColumn(value);
+                ((List<int>) table[tableRow, tableCol]).Add(numAdvisors);
+            }
+
+            excelReader.Close();
+            excelReader.Dispose();
+        }
+
+        private object[,] InitTable()
+        {
+            var table = new object[9, 5];
+            table[0, 0] = "Quarter";
+            table[0, 1] = "100(mil)";
+            table[0, 2] = "500(mil)";
+            table[0, 3] = "1000(mil)";
+            table[0, 4] = "5000(mil)";
+            table[1, 0] = "2010 Q1";
+            table[2, 0] = "2010 Q2";
+            table[3, 0] = "2010 Q3";
+            table[4, 0] = "2010 Q4";
+            table[5, 0] = "2011 Q1";
+            table[6, 0] = "2011 Q2";
+            table[7, 0] = "2011 Q3";
+            table[8, 0] = "2011 Q4";
+
+            for (var row = 1; row < 9; row++)
+                for (var col = 1; col < 5; col++)
+                {
+                    table[row, col] = new List<int>();
+                }
+            return table;
+        }
+
+        private int GetValueColumn(decimal value)
+        {
+            if (value < 500) return 1;
+            if (value < 1000) return 2;
+            if (value < 5000) return 3;
+            return 4;
+        }
+
+        public static int GetQuarter(DateTime date)
+        {
+            if (date.Month >= 4 && date.Month <= 6)
+                return 1;
+            else if (date.Month >= 7 && date.Month <= 9)
+                return 2;
+            else if (date.Month >= 10 && date.Month <= 12)
+                return 3;
+            else
+                return 4;
+
+        }
 
         [HttpGet]
         public JsonResult GetPieChartData(string advisors)

@@ -13,14 +13,23 @@
         </p>
         <div id="chart_div"></div>
     </div>
+    <p></p>
     <div class="">
         <h2>Pie Chart</h2>
         <div>
-            <label for="advisor">Comma delimited Advisor prefixs:</label><br/>
+            <label for="advisor">Comma delimited Advisor prefixs:</label><br />
             <input type="text" id="advisor" value="JPMorgan, JP Morgan">
             <button id="advisors-button">Go</button>
         </div>
         <div id="pie_chart_div"></div>
+    </div>
+    <p></p>
+    <div class="">
+        <h2>Line Chart</h2>
+        <div>
+            <button id="pie-button">Go</button>
+        </div>
+        <div id="line_chart_div"></div>
     </div>
 </div>
 
@@ -30,49 +39,71 @@
                 {'modules':[{'name':'visualization','version':'1.1','packages':
                 ['corechart']}]}"></script>
     <script type="text/javascript">
-		$(document).ready(function ()
-		{
-		    google.setOnLoadCallback(drawCharts);
-		    function drawCharts() {
+        $(document).ready(function () {
+            google.setOnLoadCallback(drawCharts);
 
-		        var getStackChartDataUrl = "@(Html.BuildUrlFromExpression<HomeController>(x => x.GetChartData()))";
-		        var getPieChartDataUrl = "@(Html.BuildUrlFromExpression<HomeController>(x => x.GetPieChartData(null)))";
+            function drawCharts() {
 
-		        $.getJSON(getStackChartDataUrl, function (datastring) {
-		            var data = JSON.parse(datastring);
-		            data = google.visualization.arrayToDataTable(data);
-		            var options = {
-		                width: 1000,
-		                height: 550,
-		                legend: { position: 'top', maxLines: 3, textStyle: { color: 'black', fontSize: 16 } },
-		                isStacked: true,
-		                // Displays tooltip on selection.
-		                // tooltip: { trigger: 'selection' },
-		            };
-		            var chart = new google.visualization.ColumnChart(document.getElementById('chart_div'));
-		            chart.draw(data, options);
-		            // Selects a set point on chart.
-		            // chart.setSelection([{row:0,column:1}])
-		            // Renders chart as PNG image
-		            // chart_div.innerHTML = '<img src="' + chart.getImageURI() + '">';
-		        }).then(function () {
-		            $("#advisors-button").click(function() {
-		                var advisors = $("#advisor").val();
-		                $.getJSON(getPieChartDataUrl, { advisors: advisors }, function (datastring) {
-		                    var data = JSON.parse(datastring);
-		                    data = google.visualization.arrayToDataTable(data);
-		                    var options = {
-		                        width: 1000,
-		                        height: 550,
-		                        title: 'Deals by Industry for ' + advisors
-		                    };
-		                    var chart = new google.visualization.PieChart(document.getElementById('pie_chart_div'));
-		                    chart.draw(data, options);
-		                });
-		            });
+                var getStackChartDataUrl = "@(Html.BuildUrlFromExpression<HomeController>(x => x.GetChartData()))";
+                var getPieChartDataUrl = "@(Html.BuildUrlFromExpression<HomeController>(x => x.GetPieChartData(null)))";
+                var getLineChartDataUrl = "@(Html.BuildUrlFromExpression<HomeController>(x => x.GetLineChartData()))";
 
-		        });
-		    }
-		});
+                $.getJSON(getStackChartDataUrl, function (datastring) {
+                    var data = JSON.parse(datastring);
+                    data = google.visualization.arrayToDataTable(data);
+                    var options = {
+                        width: 1000,
+                        height: 550,
+                        legend: { position: 'top', maxLines: 3, textStyle: { color: 'black', fontSize: 16 } },
+                        isStacked: true,
+                        // Displays tooltip on selection.
+                        // tooltip: { trigger: 'selection' },
+                    };
+                    var chart = new google.visualization.ColumnChart(document.getElementById('chart_div'));
+                    chart.draw(data, options);
+                    // Selects a set point on chart.
+                    // chart.setSelection([{row:0,column:1}])
+                    // Renders chart as PNG image
+                    // chart_div.innerHTML = '<img src="' + chart.getImageURI() + '">';
+                }).then(function () {
+
+                    $("#advisors-button").click(function () {
+                        var advisors = $("#advisor").val();
+                        $.getJSON(getPieChartDataUrl, { advisors: advisors }, function (datastring) {
+                            var data = JSON.parse(datastring);
+                            data = google.visualization.arrayToDataTable(data);
+                            var options = {
+                                width: 1000,
+                                height: 550,
+                                title: 'Deals by Industry for ' + advisors
+                            };
+                            var chart = new google.visualization.PieChart(document.getElementById('pie_chart_div'));
+                            chart.draw(data, options);
+                        });
+                    });
+                }).then(function () {
+
+                    $("#pie-button").click(function () {
+                        $.getJSON(getLineChartDataUrl, function (datastring) {
+                            var data = JSON.parse(datastring);
+                            data = google.visualization.arrayToDataTable(data);
+
+                            var options = {
+                                chart: {
+                                    title: 'Average number of deals per quarter',
+                                    subtitle: 'in millions of dollars (USD)'
+                                },
+                                width: 1000,
+                                height: 550
+                            };
+                            var chart = new google.visualization.LineChart(document.getElementById('line_chart_div'));
+                            chart.draw(data, options);
+                        });
+                    });
+                });
+
+
+            }
+        });
     </script>
 }
